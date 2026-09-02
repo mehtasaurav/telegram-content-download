@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/I589407/Desktop/Projects/telegram-content-download/.vscode)",
+      "Bash(npm install *)"
+    ],
+    "additionalDirectories": [
+      "/Users/I589407/Desktop/Projects/telegram-content-download"
+    ]
+  }
+}
