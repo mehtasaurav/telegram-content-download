@@ -1,0 +1,35 @@
+{
+  "name": "telegram-content-download",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"nodemon server.js\" \"npm run ui\"",
+    "ui": "cd ui && ng serve",
+    "debug": "nodemon --inspect server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mehtasaurav/telegram-content-download.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mehtasaurav/telegram-content-download/issues"
+  },
+  "homepage": "https://github.com/mehtasaurav/telegram-content-download#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "telegram": "^2.26.22"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "nodemon": "^3.1.14"
+  }
+}

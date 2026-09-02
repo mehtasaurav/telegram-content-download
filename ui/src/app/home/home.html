@@ -1,0 +1,62 @@
+<div class="app-layout">
+  <header class="topbar">
+    <h1>Telegram Downloader</h1>
+    <div class="search-bar">
+      <input type="text" placeholder="Paste https://t.me/... URL"
+        [ngModel]="downloadUrl()" (ngModelChange)="downloadUrl.set($event)" />
+      <button (click)="download()" [disabled]="loading() || !downloadUrl()">
+        {{ loading() ? 'Downloading...' : 'Download' }}
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    @if (error()) { <p class="error">{{ error() }}</p> }
+    @if (successMessage()) { <p class="success">{{ successMessage() }}</p> }
+
+    <h2 class="section-title">Your Groups & Channels</h2>
+
+    @if (loadingGroups()) {
+      <p class="checking">Loading groups...</p>
+    } @else if (groups().length === 0) {
+      <p class="checking">No groups found.</p>
+    } @else {
+      <div class="group-list">
+        @for (group of groups(); track group.id) {
+          <div class="group-row" (click)="goToGroup(group.id)">
+            <img
+              class="group-icon"
+              [src]="'/api/groups/' + group.id + '/photo'"
+              [alt]="group.name"
+              loading="lazy"
+              (error)="$any($event.target).style.display='none'"
+            />
+            <div class="group-info">
+              <span class="group-name">
+                {{ group.name }}
+                @if (group.scam) { <span class="tag scam">SCAM</span> }
+                @if (group.fake) { <span class="tag fake">FAKE</span> }
+                @if (group.restricted) { <span class="tag restricted">RESTRICTED</span> }
+              </span>
+              <span class="group-meta">
+                @if (group.memberCount !== null) { {{ group.memberCount | number }} members · }
+                @if (group.createdAt) { Created {{ group.createdAt | date:'mediumDate' }} }
+              </span>
+            </div>
+            <span class="group-badge" [class.channel]="group.type === 'channel'">
+              {{ group.type }}
+            </span>
+          </div>
+        }
+      </div>
+
+      <div class="pagination">
+        <button (click)="prevPage()" [disabled]="!hasPrev">← Prev</button>
+        <span class="page-info">
+          {{ currentOffset() + 1 }}–{{ currentOffset() + groups().length }} of {{ totalGroups() }}
+        </span>
+        <button (click)="nextPage()" [disabled]="!hasMore">Next →</button>
+      </div>
+    }
+  </main>
+</div>

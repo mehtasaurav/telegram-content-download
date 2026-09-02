@@ -1,0 +1,72 @@
+<div class="app-layout">
+  <header class="topbar">
+    <a routerLink="/" class="back-btn">← Back</a>
+    <h1>Group Content</h1>
+    @if (selectedCount() > 0) {
+      <span class="selection-badge">{{ selectedCount() }} selected</span>
+    }
+  </header>
+
+  <div class="tabs">
+    @for (tab of tabs; track tab.key) {
+      <button class="tab" [class.active]="activeTab() === tab.key" (click)="setTab(tab.key)">
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <main class="content">
+    @if (loading()) {
+      <p class="checking">Loading...</p>
+    } @else if (items().length === 0) {
+      <p class="checking">No items found in this tab.</p>
+    } @else {
+      <div class="select-all-row">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            [checked]="allSelected()"
+            [indeterminate]="someSelected()"
+            (change)="toggleAll()"
+          />
+          <span>Select all</span>
+        </label>
+      </div>
+
+      <div class="item-list">
+        @for (item of items(); track item.id) {
+          <div class="item-row" [class.selected]="isSelected(item.id)" (click)="toggleItem(item.id)">
+            <input
+              type="checkbox"
+              class="item-checkbox"
+              [checked]="isSelected(item.id)"
+              (click)="$event.stopPropagation()"
+              (change)="toggleItem(item.id)"
+            />
+            <span class="item-icon">{{ typeIcon(item.type) }}</span>
+            <div class="item-info">
+              <span class="item-name">
+                {{ item.fileName || item.text || '(no text)' }}
+              </span>
+              <span class="item-meta">
+                @if (item.fileSize) { {{ formatSize(item.fileSize) }} · }
+                @if (item.date) { {{ item.date | date:'mediumDate' }} }
+              </span>
+            </div>
+            <span class="item-badge" [class]="item.type">{{ item.type }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="show-more">
+        @if (loadingMore()) {
+          <p class="checking">Loading more...</p>
+        } @else if (hasMore) {
+          <button class="show-more-btn" (click)="showMore()">Show More</button>
+        } @else {
+          <p class="end-of-list">All {{ total() }} items loaded</p>
+        }
+      </div>
+    }
+  </main>
+</div>
