@@ -1,128 +1,680 @@
-# telegram-content-download
+# Telegram Content Downloader (In-progress)
 
-![alt text](resources/image.png)
+A full-stack web application for browsing Telegram groups/channels and viewing their shared content through a clean Angular interface.
 
-![alt text](resources/image-1.png)
+The application uses **Angular** for the frontend and **Node.js + Express** with **GramJS** for communicating with Telegram through the MTProto protocol.
 
-![alt text](resources/image-2.png)
+> ⚠️ **Project Status:** Authentication and content browsing are implemented. File downloading and API security are still under development.
 
-Project Architecture: Telegram Content Downloader                                                
-                                                                                                   
-  This is a full-stack web app with two parts: a Node.js backend and an Angular frontend.          
-                                                                                                   
-  ---             
-  Big Picture                                                                                      
-                                                                                                   
-  User's Browser (Angular UI)
-          |                                                                                        
-          | HTTP (via proxy)                                                                       
-          |                                                                                        
-  Node.js Express Server  (server.js)                                                              
-          |                                                                                        
-          | Telegram MTProto protocol                                                              
-          |                                                                                        
-  Telegram's servers                                                                               
-                                                                                                   
-  ---                                                                                              
-  Backend (Node.js) — 2 files                                                                      
-                                                                                                   
-  server.js — The web server / API gateway
-  - Starts an Express HTTP server on port 3000                                                     
-  - Exposes REST API routes that the Angular UI calls                                              
-  - Routes:                                                                                        
-    - GET /auth/status — is the user already logged into Telegram?                                 
-    - POST /auth/send-code — send OTP to phone                                                     
-    - POST /auth/sign-in — verify OTP and log in                                                   
-    - POST /auth/2fa — submit 2FA password (if enabled)                                            
-    - GET /groups — list all Telegram groups/channels                                              
-    - GET /groups/:id/photo — fetch group profile photo as image                                   
-    - GET /groups/:id/content — fetch messages/files from a group                                  
-    - POST /download — placeholder (not implemented yet)                                           
-                                                                                                   
-  services/user-authorization/auth.service.js — The Telegram brain                                 
-  - Uses the telegram npm library (GramJS) to talk directly to Telegram's servers                  
-  - Manages a single TelegramClient instance (singleton — created once, reused)                    
-  - Handles the 3-step Telegram login flow:                                                        
-    a. sendCode() → asks Telegram to SMS an OTP to the phone                                       
-    b. signIn() → submits the OTP to get a session          
-    c. signInWith2FA() → submits a password if 2FA is on                                           
-  - Saves the session string to .env so the user stays logged in across server restarts            
-  - getGroups() → fetches all dialogs (chats/channels) from Telegram                               
-  - getGroupPhoto() → downloads a group's avatar as a buffer                                       
-  - getGroupContent() → fetches messages and categorizes them as video/image/pdf/chat/other        
-                                                                                                   
-  .env — Config file storing API_ID, API_HASH (Telegram app credentials) and SESSION_STRING (saved 
-  login session)                                                                                   
-                                                                                                   
-  ---                                                                                              
-  Frontend (Angular) — key files
-                                                                                                   
-  ui/proxy.conf.json — The glue between frontend and backend
-  - During dev, Angular runs on port 4200. Any request to /api/... is transparently forwarded to   
-  localhost:3000 (the Node server). So the UI just calls /api/groups and the proxy handles the     
-  rest.                                                                                            
-                                                                                                   
-  ui/src/app/app.ts + app.html — Root component / Auth gate
-  - The very first thing loaded in the browser                                                     
-  - On startup: calls /api/auth/status to check if the user is already logged in                   
-  - If not logged in: shows a login form (phone → OTP → optional 2FA), step by step                
-  - If already logged in: immediately navigates to the home page                                   
-  - Contains the <router-outlet> where page components are rendered                                
-                                                                                                   
-  ui/src/app/app.routes.ts — URL routing                                                           
-  - / → HomeComponent                                                                              
-  - / → HomeComponent
-  - /group/:groupId → GroupDetailComponent
+---
 
+## 📸 Screenshots
 
+<p align="center">
+  <img src="resources/image.png" width="32%" />
+  <img src="resources/image-1.png" width="32%" />
+  <img src="resources/image-2.png" width="32%" />
+</p>
 
-  ui/src/app/services/auth.service.ts — Frontend HTTP client
-  - A shared Angular service that wraps all HttpClient calls to the backend
-  - All components use this single service — they don't call the API directly
-  - Also defines the Group and ContentItem TypeScript interfaces
+---
 
+## ✨ Features
 
+### 🔐 Telegram Authentication
 
-  ui/src/app/home/home.ts + home.html — Home page
-  - Shows a list of all the user's Telegram groups/channels with their photos
-  - Supports pagination (10 per page, prev/next)
-  - Has a URL input bar to paste a t.me/... link for downloading (wired up but download logic is a TODO on the
-  backend)
-  - Clicking a group navigates to its detail page
+* Phone number based login
+* OTP verification
+* Telegram 2FA/password support
+* Persistent Telegram session
+* Automatically detects existing login sessions
 
+### 📂 Telegram Groups & Channels
 
+* Fetches the user's Telegram groups and channels
+* Displays group/channel profile photos
+* Pagination support
+* Navigate from a group list to its detailed content
 
-  ui/src/app/group-detail/group-detail.ts + group-detail.html — Group detail page
-  - Shows all content inside a specific group
-  - Tabs: All / Videos / Images / PDFs / Chat / Other
-  - Load more button (appends items, doesn't replace)
-  - Checkbox selection for bulk operations (selection works, actual download action is a TODO)
+### 📄 Content Browsing
 
+View content shared inside a Telegram group/channel.
 
+Supported content categories:
 
-  ---
-  End-to-End Login Flow
+* 🎥 Videos
+* 🖼️ Images
+* 📄 PDFs
+* 💬 Chat / Messages
+* 📦 Other files
+* 📋 All content
 
+### ☑️ Content Selection
 
+* Select individual content items
+* Bulk selection support
+* Load more content without replacing existing results
 
-  1. Browser loads → app.ts checks /api/auth/status
-  2. If not logged in:
-     - User types phone number → POST /auth/send-code → Telegram sends SMS
-     - User types OTP → POST /auth/sign-in → success OR 2FA required
-     - (If 2FA) User types password → POST /auth/2fa
-     - Session string saved to .env, user is logged in
-  3. Router navigates to HomeComponent
-  4. HomeComponent calls /api/groups → auth.service.js calls Telegram → returns group list
-  5. User clicks a group → navigate to /group/:id
-  6. GroupDetailComponent calls /api/groups/:id/content → returns messages
+### 🔗 Telegram URL Input
 
+The home page includes a URL input for Telegram `t.me/...` links.
 
+> The actual download functionality is currently a **TODO**.
 
-  ---
-  What's NOT done yet
+---
 
+# 🏗️ Project Architecture
 
+At a high level, the application consists of three main layers:
 
-  - POST /download on the backend — the route exists but just echoes back the URL
-  - Actually downloading files from selected items in the group detail view
-  - No authentication/security on the API (anyone who can reach port 3000 can access your Telegram data)
+```text
+┌──────────────────────────────┐
+│       User's Browser         │
+│        Angular UI            │
+│          :4200               │
+└──────────────┬───────────────┘
+               │
+               │ HTTP
+               │ /api/*
+               ▼
+┌──────────────────────────────┐
+│       Node.js Backend        │
+│      Express Server          │
+│          :3000               │
+└──────────────┬───────────────┘
+               │
+               │ MTProto
+               ▼
+┌──────────────────────────────┐
+│      Telegram Servers        │
+└──────────────────────────────┘
+```
+
+### Request Flow
+
+```text
+Angular Component
+       │
+       ▼
+Angular Auth Service
+       │
+       ▼
+HTTP Request
+       │
+       ▼
+Express Route
+       │
+       ▼
+Telegram Auth Service
+       │
+       ▼
+GramJS / MTProto
+       │
+       ▼
+Telegram
+```
+
+---
+
+# 📁 Project Structure
+
+```text
+telegram-content-download/
+│
+├── server.js
+├── .env
+│
+├── services/
+│   └── user-authorization/
+│       └── auth.service.js
+│
+├── ui/
+│   ├── proxy.conf.json
+│   │
+│   └── src/
+│       └── app/
+│           ├── app.ts
+│           ├── app.html
+│           ├── app.routes.ts
+│           │
+│           ├── services/
+│           │   └── auth.service.ts
+│           │
+│           ├── home/
+│           │   ├── home.ts
+│           │   └── home.html
+│           │
+│           └── group-detail/
+│               ├── group-detail.ts
+│               └── group-detail.html
+│
+└── resources/
+    ├── image.png
+    ├── image-1.png
+    └── image-2.png
+```
+
+---
+
+# ⚙️ Backend
+
+The backend is built with **Node.js**, **Express**, and **GramJS**.
+
+## `server.js`
+
+Acts as the application's **HTTP server and API layer**.
+
+Responsibilities:
+
+* Starts the Express server on port `3000`
+* Provides REST API endpoints
+* Receives requests from Angular
+* Calls the Telegram service
+* Returns Telegram data to the frontend
+
+### API Endpoints
+
+| Method | Endpoint              | Description                                  |
+| ------ | --------------------- | -------------------------------------------- |
+| `GET`  | `/auth/status`        | Check whether the Telegram session is active |
+| `POST` | `/auth/send-code`     | Send Telegram OTP                            |
+| `POST` | `/auth/sign-in`       | Verify OTP and sign in                       |
+| `POST` | `/auth/2fa`           | Submit Telegram 2FA password                 |
+| `GET`  | `/groups`             | Get Telegram groups/channels                 |
+| `GET`  | `/groups/:id/photo`   | Get group/channel profile photo              |
+| `GET`  | `/groups/:id/content` | Get content from a group/channel             |
+| `POST` | `/download`           | Download endpoint — **TODO**                 |
+
+---
+
+## `auth.service.js`
+
+Location:
+
+```text
+services/user-authorization/auth.service.js
+```
+
+This is the **Telegram communication layer** of the application.
+
+It uses **GramJS** to communicate directly with Telegram using the MTProto protocol.
+
+### Main responsibilities
+
+* Creates and manages a Telegram client
+* Handles Telegram authentication
+* Maintains the Telegram session
+* Retrieves groups/channels
+* Retrieves group/channel profile photos
+* Retrieves messages and files
+* Categorizes content
+
+### Telegram Login Flow
+
+```text
+Phone Number
+     │
+     ▼
+sendCode()
+     │
+     ▼
+Telegram sends OTP
+     │
+     ▼
+signIn()
+     │
+     ├── Login successful
+     │
+     └── 2FA required
+              │
+              ▼
+        signInWith2FA()
+              │
+              ▼
+        Login successful
+```
+
+The authenticated session is stored as a session string so that the user does not have to log in again every time the backend restarts.
+
+---
+
+# 🔑 Environment Variables
+
+The backend requires Telegram API credentials.
+
+Example `.env`:
+
+```env
+API_ID=your_api_id
+API_HASH=your_api_hash
+SESSION_STRING=your_session_string
+```
+
+### Variables
+
+| Variable         | Purpose                           |
+| ---------------- | --------------------------------- |
+| `API_ID`         | Telegram application ID           |
+| `API_HASH`       | Telegram application hash         |
+| `SESSION_STRING` | Persistent Telegram login session |
+
+> 🔒 **Never commit your ****`.env`**** file or Telegram credentials to Git.**
+
+Add it to `.gitignore`:
+
+```gitignore
+.env
+node_modules/
+```
+
+---
+
+# 🖥️ Frontend
+
+The frontend is built using **Angular**.
+
+## `proxy.conf.json`
+
+During development:
+
+```text
+Angular
+localhost:4200
+     │
+     │ /api/*
+     ▼
+Node.js
+localhost:3000
+```
+
+The Angular development server forwards `/api/...` requests to the Node.js backend.
+
+For example:
+
+```text
+Angular calls:
+
+/api/groups
+
+        ↓
+
+Proxy forwards to:
+
+http://localhost:3000/groups
+```
+
+This allows the frontend to communicate with the backend without directly hardcoding the backend URL in every component.
+
+---
+
+# 🧩 Angular Application
+
+## `app.ts` / `app.html`
+
+The root component and authentication gate.
+
+When the application starts:
+
+```text
+Application starts
+       │
+       ▼
+Check /api/auth/status
+       │
+       ├── Logged in
+       │      │
+       │      ▼
+       │   Home Page
+       │
+       └── Not logged in
+              │
+              ▼
+          Login Screen
+```
+
+The login screen guides the user through:
+
+1. Phone number
+2. OTP
+3. Optional 2FA password
+
+The application then navigates to the home page after successful authentication.
+
+---
+
+## `app.routes.ts`
+
+Defines application routes.
+
+| Route             | Component              | Purpose                    |
+| ----------------- | ---------------------- | -------------------------- |
+| `/`               | `HomeComponent`        | Groups/channels home page  |
+| `/group/:groupId` | `GroupDetailComponent` | View group/channel content |
+
+---
+
+## `services/auth.service.ts`
+
+A shared Angular service responsible for communicating with the backend.
+
+It:
+
+* Wraps Angular `HttpClient`
+* Handles authentication API calls
+* Retrieves groups
+* Retrieves group content
+* Retrieves profile photos
+* Defines `Group` and `ContentItem` TypeScript interfaces
+
+Components use this service instead of making API calls directly.
+
+```text
+Component
+    │
+    ▼
+AuthService
+    │
+    ▼
+Backend API
+```
+
+This keeps API-related code in one place.
+
+---
+
+# 🏠 Home Page
+
+Files:
+
+```text
+ui/src/app/home/
+├── home.ts
+└── home.html
+```
+
+The home page:
+
+* Displays Telegram groups/channels
+* Loads group profile photos
+* Supports pagination
+* Displays 10 groups per page
+* Provides previous/next navigation
+* Provides a Telegram URL input
+* Navigates to a group's detail page
+
+```text
+Home
+ │
+ ├── Groups
+ │    ├── Group A
+ │    ├── Group B
+ │    ├── Group C
+ │    └── ...
+ │
+ └── Telegram URL
+```
+
+---
+
+# 📦 Group Detail Page
+
+Files:
+
+```text
+ui/src/app/group-detail/
+├── group-detail.ts
+└── group-detail.html
+```
+
+The group detail page displays content from a selected Telegram group/channel.
+
+### Content Tabs
+
+```text
+┌─────┬────────┬────────┬──────┬──────┬───────┐
+│ All │ Videos │ Images │ PDFs │ Chat │ Other │
+└─────┴────────┴────────┴──────┴──────┴───────┘
+```
+
+Features:
+
+* Filter content by type
+* Select individual items
+* Bulk selection
+* Load more content
+* Append new content instead of replacing existing items
+
+---
+
+# 🔄 End-to-End Flow
+
+## 1. Application Startup
+
+```text
+Browser
+   │
+   ▼
+Angular App
+   │
+   ▼
+/api/auth/status
+   │
+   ▼
+Backend
+   │
+   ▼
+Telegram Session
+```
+
+The application determines whether the user already has an active Telegram session.
+
+---
+
+## 2. Login
+
+```text
+Phone Number
+     │
+     ▼
+POST /auth/send-code
+     │
+     ▼
+Telegram OTP
+     │
+     ▼
+POST /auth/sign-in
+     │
+     ├── Success ──────────────┐
+     │                         │
+     └── 2FA Required          │
+            │                  │
+            ▼                  │
+       POST /auth/2fa          │
+            │                  │
+            └──────────────────┘
+                       │
+                       ▼
+                  Home Page
+```
+
+---
+
+## 3. Load Groups
+
+```text
+HomeComponent
+      │
+      ▼
+GET /groups
+      │
+      ▼
+auth.service.js
+      │
+      ▼
+GramJS
+      │
+      ▼
+Telegram
+      │
+      ▼
+Groups / Channels
+      │
+      ▼
+Angular UI
+```
+
+---
+
+## 4. View Group Content
+
+```text
+User selects group
+        │
+        ▼
+/group/:groupId
+        │
+        ▼
+GET /groups/:id/content
+        │
+        ▼
+GramJS
+        │
+        ▼
+Telegram
+        │
+        ▼
+Messages + Files
+        │
+        ▼
+Content categorization
+        │
+        ▼
+Angular UI
+```
+
+---
+
+# 🛠️ Tech Stack
+
+### Frontend
+
+* Angular
+* TypeScript
+* HTML / CSS
+* Angular Router
+* Angular HttpClient
+
+### Backend
+
+* Node.js
+* Express
+* JavaScript
+
+### Telegram
+
+* GramJS
+* Telegram MTProto API
+
+### Development
+
+* Angular development server
+* Express server
+* Angular proxy
+
+---
+
+# 🚧 Current Status
+
+| Feature                     | Status |
+| --------------------------- | :----: |
+| Telegram authentication     |    ✅   |
+| OTP login                   |    ✅   |
+| Telegram 2FA                |    ✅   |
+| Persistent session          |    ✅   |
+| Group/channel listing       |    ✅   |
+| Group profile photos        |    ✅   |
+| Group content retrieval     |    ✅   |
+| Content categorization      |    ✅   |
+| Content filtering           |    ✅   |
+| Pagination                  |    ✅   |
+| Load more                   |    ✅   |
+| Content selection           |    ✅   |
+| Telegram URL input          |   🟡   |
+| File downloading            |    ❌   |
+| Bulk download               |    ❌   |
+| API authentication/security |    ❌   |
+
+---
+
+# 🚀 Planned Improvements
+
+* [ ] Implement actual file downloading
+* [ ] Implement bulk downloads
+* [ ] Support Telegram `t.me/...` URL downloads
+* [ ] Add download progress indicators
+* [ ] Add download history
+* [ ] Improve error handling
+* [ ] Add API authentication
+* [ ] Secure session storage
+* [ ] Add rate limiting
+* [ ] Improve responsive UI
+* [ ] Add proper production deployment configuration
+
+---
+
+# ⚠️ Security Notice
+
+This project currently does **not** have authentication or authorization protection on the backend API.
+
+Anyone who can access the Node.js server may potentially access the Telegram data available through the API.
+
+For example:
+
+```text
+Client
+   │
+   ▼
+Node.js :3000
+   │
+   ├── /groups
+   ├── /groups/:id/content
+   └── /download
+```
+
+Before using this application in a production or publicly accessible environment, implement:
+
+* API authentication
+* Authorization
+* Secure session storage
+* HTTPS
+* Rate limiting
+* Input validation
+* Proper CORS configuration
+* Secure environment variable management
+
+---
+
+# 📌 Important
+
+This project is intended for accessing content from Telegram accounts that the authenticated user is authorized to access.
+
+Users are responsible for complying with Telegram's terms, applicable laws, and the rights of content owners when downloading or using content.
+
+---
+
+# 📄 License
+
+Add your preferred license here.
+
+For example:
+
+```text
+MIT License
+```
+
+---
+
+## 👨‍💻 Development
+
+Contributions, improvements, and suggestions are welcome.
+
+If you find a bug or have an idea for a feature, feel free to open an issue or submit a pull request.
