@@ -1,0 +1,12 @@
+{
+  "name": "google-upload",
+  "version": "1.0.0",
+  "description": "upload files to google",
+  "license": "ISC",
+  "author": "Saurav Mehta",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
